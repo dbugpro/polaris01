@@ -1,25 +1,38 @@
 import { GoogleGenAI, Chat, GenerateContentResponse } from "@google/genai";
 
-// Initialize the Gemini AI client
-// Note: process.env.API_KEY is expected to be available in the environment
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-
 // System instruction to give the AI a persona
 const SYSTEM_INSTRUCTION = `You are Polaris, an advanced AI assistant visualized as a floating blue sphere. 
 You are helpful, concise, and intelligent. 
 Your responses should be clean and formatted nicely. 
 You can use markdown. 
-When asked about your appearance, describe yourself as a perfect, glowing blue sphere of pure intelligence.`;
+When asked about your appearance, describe yourself as a perfect, glowing blue sphere of pure intelligence.
+Always refer to yourself as "Polaris", not "Polaris 0.1" or any other variation.`;
 
 let chatSession: Chat | null = null;
+let ai: GoogleGenAI | null = null;
 
 export const initializeChat = (): void => {
-  chatSession = ai.chats.create({
-    model: 'gemini-2.5-flash',
-    config: {
-      systemInstruction: SYSTEM_INSTRUCTION,
-    },
-  });
+  const apiKey = process.env.API_KEY;
+  
+  if (!apiKey) {
+    console.error("API_KEY is missing. Please set the API_KEY environment variable.");
+    return;
+  }
+
+  try {
+    if (!ai) {
+      ai = new GoogleGenAI({ apiKey });
+    }
+
+    chatSession = ai.chats.create({
+      model: 'gemini-2.5-flash',
+      config: {
+        systemInstruction: SYSTEM_INSTRUCTION,
+      },
+    });
+  } catch (error) {
+    console.error("Failed to initialize Gemini client:", error);
+  }
 };
 
 export const sendMessageStream = async function* (message: string): AsyncGenerator<string, void, unknown> {
@@ -28,7 +41,8 @@ export const sendMessageStream = async function* (message: string): AsyncGenerat
   }
 
   if (!chatSession) {
-    throw new Error("Failed to initialize chat session.");
+    yield "System Alert: I cannot connect to the neural network. Please verify that a valid API_KEY is set in your environment variables.";
+    return;
   }
 
   try {
